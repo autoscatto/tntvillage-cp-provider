@@ -1,7 +1,7 @@
 tntvillage-cp-provider ![logo](http://forum.tntvillage.scambioetico.org/style_images/mkportal-636/loghino.gif)
 ======================
 
-TNTVillage ([An italian ethical sharing forum](http://www.tntvillage.scambioetico.org/index.php) ) CouchPotato torrent provider.
+TNTVillage ([italian ethical sharing forum](http://www.tntvillage.scambioetico.org/index.php) ) CouchPotato torrent provider.
 
 ####SETUP INSTRUCTIONS
 

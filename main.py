@@ -11,9 +11,6 @@ import time
 log = CPLog(__name__)
 
 
-log = CPLog(__name__)
-
-
 class TNTVillage(TorrentMagnetProvider):
 
     sess = None
@@ -31,8 +28,24 @@ class TNTVillage(TorrentMagnetProvider):
     http_time_between_calls = 1  # seconds
     cat_backup_id = None
 
+    # TODO: THA UGLIEST, discover a way to find the release year in tnt details page
+    def standardize_title(self, name, title, year, quality):
+        s_y = re.findall(r'(\d{4})', name)
+        s_yo = "%d" % year
+        if s_yo in s_y:  # if I find the year, I assume that it is indeed the right one, and return the standard title
+            ret = "%s (%d) - %s" % (title, year, quality)
+            log.info("THA UGLIEST %s -> %s" % (name, ret))
+            return ret
+
+        return name
+
+
+
     ### TODO: what about movie year and quality? ###
     def _searchOnTitle(self, title, movie, quality, results):
+        #print "//"*40
+        #print movie['library']
+        #print "//"*40
         self.login()
         log.debug("Searching for %s (imdb: %s) (%s) on %s" % (title,
                                                               movie['library']['identifier'].replace('tt', ''),
@@ -78,9 +91,9 @@ class TNTVillage(TorrentMagnetProvider):
 
         if row:
                 try:
-                    self.parseResults(results, row)
+                    self.parseResults(results, row, movie['library']['year'] , quality['label'], title)
                 except:
-                    log.error('Failed parsing ilCorsaroNero: %s', traceback.format_exc())
+                    log.error('Failed parsing TNTVillage: %s', traceback.format_exc())
 
         else:
                 log.debug('No search results found.')
@@ -101,10 +114,13 @@ class TNTVillage(TorrentMagnetProvider):
         datas = html.findAll('span', attrs={"class": "postdetails"})[0].text
         datas = re.findall(r':(.*?),', datas)[0]
         data = self.ageToDays(datas)
-        return titolo, data, magnet
-
+        return data, magnet
+        
+                        
     # filters the <td> elements containing the results, if any
-    def parseResults(self, results, entries):
+    def parseResults(self, results, entries, year, quality, title):
+        print "//"*40
+        print year
         new = {}
         for result in entries:
             tds = result.findAll('td')
@@ -115,13 +131,15 @@ class TNTVillage(TorrentMagnetProvider):
                 new['detail_url'] = tds[0].a['href']
                 new['size'] = self.parseSize("%s GB" % tds[7].span.text)
                 new['id'] = tds[0].a['href'].split('showtopic=')[1]
-                new['name'], new['age'], new['url'] = self.getMagnetLink(new['detail_url'])
+                new['age'], new['url'] = self.getMagnetLink(new['detail_url'])
+                new['name'] = self.standardize_title(tds[0].a.text, title, year, quality)
                 new['seeders'] = tryInt(tds[5].span.text)
                 new['leechers'] = tryInt(tds[4].span.text)
                 new['score'] = self.conf('extra_score') + 0
 
-            except:
+            except Exception, e:
                 log.info("Search entry processing FAILED!")
+                print e
                 continue
 
             results.append(new)
