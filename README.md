@@ -6,7 +6,7 @@ TNTVillage ([italian ethical sharing forum](http://www.tntvillage.scambioetico.o
 ####SETUP INSTRUCTIONS
 
 ```
-cd $CouchPotatoServerdir/couchpotato/core/providers/torrent/
+cd $CouchPotatoServerdir/custom_plugins  # you can find $CouchPotatoServerdir path in settings -> about
 git clone https://github.com/autoscatto/tntvillage-cp-provider.git tntvillage
 
 # Now you should see **TNT Village** as one of the prodivers for Torrents. (Settings -> Searcher)

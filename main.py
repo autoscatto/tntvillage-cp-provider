@@ -2,7 +2,8 @@ from bs4 import BeautifulSoup
 from couchpotato.core.helpers.encoding import simplifyString, tryUrlencode
 from couchpotato.core.helpers.variable import tryInt
 from couchpotato.core.logger import CPLog
-from couchpotato.core.providers.torrent.base import TorrentMagnetProvider
+from couchpotato.core.media._base.providers.torrent.base import TorrentMagnetProvider
+from couchpotato.core.media.movie.providers.base import MovieProvider
 import datetime
 import traceback
 import re
@@ -11,7 +12,7 @@ import time
 log = CPLog(__name__)
 
 
-class TNTVillage(TorrentMagnetProvider):
+class TNTVillage(TorrentMagnetProvider, MovieProvider):
 
     sess = None
     last_login_check = None
