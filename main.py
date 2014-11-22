@@ -2,7 +2,8 @@ from bs4 import BeautifulSoup
 from couchpotato.core.helpers.encoding import simplifyString, tryUrlencode
 from couchpotato.core.helpers.variable import tryInt
 from couchpotato.core.logger import CPLog
-from couchpotato.core.providers.torrent.base import TorrentMagnetProvider
+from couchpotato.core.media._base.providers.torrent.base import TorrentMagnetProvider
+from couchpotato.core.media.movie.providers.base import MovieProvider
 import datetime
 import traceback
 import re
@@ -11,7 +12,7 @@ import time
 log = CPLog(__name__)
 
 
-class TNTVillage(TorrentMagnetProvider):
+class TNTVillage(TorrentMagnetProvider, MovieProvider):
 
     sess = None
     last_login_check = None
@@ -47,20 +48,21 @@ class TNTVillage(TorrentMagnetProvider):
         #print movie['library']
         #print "//"*40
         self.login()
+        print(movie)
         log.debug("Searching for %s (imdb: %s) (%s) on %s" % (title,
-                                                              movie['library']['identifier'].replace('tt', ''),
+                                                              movie['identifiers']['imdb'].replace('tt', ''),
                                                               quality['label'],
                                                               self.urls['base_url']))
 
         # Get italian title
         # First, check cache
-        cache_key = 'italiantitle.%s' % movie['library']['identifier']
+        cache_key = 'italiantitle.%s' % movie['identifiers']['imdb']
         italiantitle = self.getCache(cache_key)
 
         if not italiantitle:
             try:
                 dataimdb = self.getHTMLData(
-                    'http://www.imdb.com/title/%s/releaseinfo' % (movie['library']['identifier']))
+                    'http://www.imdb.com/title/%s/releaseinfo' % (movie['identifiers']['imdb']))
                 html = BeautifulSoup(dataimdb)
                 try:
                     italiantitle = html.find('table', id='akas').find('td', text="Italy").findNext().text
@@ -68,11 +70,11 @@ class TNTVillage(TorrentMagnetProvider):
                     log.debug(
                         'Failed to find italian title for %s, it has probably never been released in Italy, '
                         'we\'ll try searching for the original title anyways',
-                        title)
-                    italiantitle = title
+                        movie['title'])
+                    italiantitle = movie['title']
             except:
                 log.error('Failed parsing iMDB for italian title, using the original one: %s', traceback.format_exc())
-                italiantitle = title
+                italiantitle = movie['title']
 
             self.setCache(cache_key, italiantitle, timeout=25920000)
 
@@ -91,7 +93,7 @@ class TNTVillage(TorrentMagnetProvider):
 
         if row:
                 try:
-                    self.parseResults(results, row, movie['library']['year'] , quality['label'], title)
+                    self.parseResults(results, row, movie['info']['year'] , quality['label'], title)
                 except:
                     log.error('Failed parsing TNTVillage: %s', traceback.format_exc())
 
@@ -119,8 +121,8 @@ class TNTVillage(TorrentMagnetProvider):
                         
     # filters the <td> elements containing the results, if any
     def parseResults(self, results, entries, year, quality, title):
-        print "//"*40
-        print year
+        #print "//"*40
+        #print year
         new = {}
         for result in entries:
             tds = result.findAll('td')
@@ -137,9 +139,9 @@ class TNTVillage(TorrentMagnetProvider):
                 new['leechers'] = tryInt(tds[4].span.text)
                 new['score'] = self.conf('extra_score') + 0
 
-            except Exception, e:
+            except Exception as e:
                 log.info("Search entry processing FAILED!")
-                print e
+                print(e)
                 continue
 
             results.append(new)
