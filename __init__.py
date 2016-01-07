@@ -23,11 +23,13 @@ config = [{
                 {
                     'name': 'username',
                     'default': '',
+                    'description': 'Enter your site username.',
                 },
                 {
                     'name': 'password',
                     'default': '',
                     'type': 'password',
+                    'description': 'Enter your site password',
                 },
                 {
                     'name': 'seed_ratio',

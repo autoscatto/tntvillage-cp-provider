@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 from couchpotato.core.helpers.encoding import simplifyString, tryUrlencode
 from couchpotato.core.helpers.variable import tryInt
 from couchpotato.core.logger import CPLog
-from couchpotato.core.media._base.providers.torrent.base import TorrentMagnetProvider
+from couchpotato.core.media._base.providers.torrent.base import TorrentProvider
 from couchpotato.core.media.movie.providers.base import MovieProvider
 import datetime
 import traceback
@@ -12,7 +12,7 @@ import time
 log = CPLog(__name__)
 
 
-class TNTVillage(TorrentMagnetProvider, MovieProvider):
+class TNTVillage(TorrentProvider, MovieProvider):
 
     sess = None
     last_login_check = None
@@ -103,6 +103,8 @@ class TNTVillage(TorrentMagnetProvider, MovieProvider):
     # computes days since the torrent release
     def ageToDays(self, age_str):
         # actually a datetime.timedelta object
+        import locale
+        locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
         tdelta = datetime.datetime.now() - datetime.datetime.strptime(age_str, " %b %d %Y")
         # to int
         return tdelta.days
@@ -118,6 +120,17 @@ class TNTVillage(TorrentMagnetProvider, MovieProvider):
         data = self.ageToDays(datas)
         return data, magnet
         
+
+    def getTorrentLink(self, url):
+        data = self.sess.get(url)
+        html = BeautifulSoup(data.content)
+        magnet = [x for x in html.find_all('a', title="Scarica allegato") if x.text.endswith('.torrent')][0].attrs['href']
+        log.info("LINKO: ----------- %s" % magnet)
+        titolo = html.findAll('td', id='sottotitolo')[1].text.strip('&nbsp;')
+        datas = html.findAll('span', attrs={"class": "postdetails"})[0].text
+        datas = re.findall(r':(.*?),', datas)[0]
+        data = self.ageToDays(datas)
+        return data, magnet
                         
     # filters the <td> elements containing the results, if any
     def parseResults(self, results, entries, year, quality, title):
@@ -133,7 +146,7 @@ class TNTVillage(TorrentMagnetProvider, MovieProvider):
                 new['detail_url'] = tds[0].a['href']
                 new['size'] = self.parseSize("%s GB" % tds[7].span.text)
                 new['id'] = tds[0].a['href'].split('showtopic=')[1]
-                new['age'], new['url'] = self.getMagnetLink(new['detail_url'])
+                new['age'], new['url'] = self.getTorrentLink(new['detail_url'])
                 new['name'] = self.standardize_title(tds[0].a.text, title, year, quality)
                 new['seeders'] = tryInt(tds[5].span.text)
                 new['leechers'] = tryInt(tds[4].span.text)
