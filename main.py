@@ -13,16 +13,15 @@ log = CPLog(__name__)
 
 
 class TNTVillage(TorrentProvider, MovieProvider):
-
     sess = None
     last_login_check = None
     payload = None
-
+    desc = None
 
     urls = {
         'test': 'http://forum.tntvillage.scambioetico.org/index.php',
         # TODO: understand how the fuck the super does login
-        #'login': 'http://forum.tntvillage.scambioetico.org/index.php',  
+        # 'login': 'http://forum.tntvillage.scambioetico.org/index.php',
         'base_url': 'http://forum.tntvillage.scambioetico.org/index.php',
     }
 
@@ -30,25 +29,27 @@ class TNTVillage(TorrentProvider, MovieProvider):
     cat_backup_id = None
 
     # TODO: THA UGLIEST, discover a way to find the release year in tnt details page
-    def standardize_title(self, name, title, year, quality):
+    def standardize_title(self, name, title, year, quality, desc):
         s_y = re.findall(r'(\d{4})', name)
         s_yo = "%d" % year
+        q_label = ""
+        for q in quality['alternative'] + [quality['label']] + [quality['identifier']]:
+            if str(q) in desc.lower():
+                q_label = desc
+
         if s_yo in s_y:  # if I find the year, I assume that it is indeed the right one, and return the standard title
-            ret = "%s (%d) - %s" % (title, year, quality)
+            ret = "%s (%d) - %s, %s" % (title, year, quality['identifier'], q_label)
             log.info("THA UGLIEST %s -> %s" % (name, ret))
             return ret
 
         return name
 
-
-
-    ### TODO: what about movie year and quality? ###
+    # TODO: what about movie year and quality? ###
     def _searchOnTitle(self, title, movie, quality, results):
         #print "//"*40
         #print movie['library']
         #print "//"*40
         self.login()
-        print(movie)
         log.debug("Searching for %s (imdb: %s) (%s) on %s" % (title,
                                                               movie['identifiers']['imdb'].replace('tt', ''),
                                                               quality['label'],
@@ -93,7 +94,7 @@ class TNTVillage(TorrentProvider, MovieProvider):
 
         if row:
                 try:
-                    self.parseResults(results, row, movie['info']['year'] , quality['label'], title)
+                    self.parseResults(results, row, movie['info']['year'], quality, title)
                 except:
                     log.error('Failed parsing TNTVillage: %s', traceback.format_exc())
 
@@ -119,14 +120,19 @@ class TNTVillage(TorrentProvider, MovieProvider):
         datas = re.findall(r':(.*?),', datas)[0]
         data = self.ageToDays(datas)
         return data, magnet
-        
 
     def getTorrentLink(self, url):
         data = self.sess.get(url)
         html = BeautifulSoup(data.content)
         magnet = [x for x in html.find_all('a', title="Scarica allegato") if x.text.endswith('.torrent')][0].attrs['href']
-        log.info("LINKO: ----------- %s" % magnet)
+        log.info("Mgnet link: ----------- %s" % magnet)
         titolo = html.findAll('td', id='sottotitolo')[1].text.strip('&nbsp;')
+        desc_match = re.compile(ur'\[(.*)\]')
+        s_res = re.search(desc_match, titolo)
+        if s_res:
+            g = s_res.group()
+        self.desc = g
+
         datas = html.findAll('span', attrs={"class": "postdetails"})[0].text
         datas = re.findall(r':(.*?),', datas)[0]
         data = self.ageToDays(datas)
@@ -134,8 +140,8 @@ class TNTVillage(TorrentProvider, MovieProvider):
                         
     # filters the <td> elements containing the results, if any
     def parseResults(self, results, entries, year, quality, title):
-        #print "//"*40
-        #print year
+        # print "//"*40
+        # print year
         new = {}
         for result in entries:
             tds = result.findAll('td')
@@ -147,10 +153,10 @@ class TNTVillage(TorrentProvider, MovieProvider):
                 new['size'] = self.parseSize("%s GB" % tds[7].span.text)
                 new['id'] = tds[0].a['href'].split('showtopic=')[1]
                 new['age'], new['url'] = self.getTorrentLink(new['detail_url'])
-                new['name'] = self.standardize_title(tds[0].a.text, title, year, quality)
+                new['name'] = self.standardize_title(tds[0].a.text, title, year, quality, self.desc)
                 new['seeders'] = tryInt(tds[5].span.text)
                 new['leechers'] = tryInt(tds[4].span.text)
-                new['score'] = self.conf('extra_score') + 0
+                new['score'] = self.conf('extra_score') + 20
 
             except Exception as e:
                 log.info("Search entry processing FAILED!")
