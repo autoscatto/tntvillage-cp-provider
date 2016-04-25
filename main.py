@@ -83,10 +83,12 @@ class TNTVillage(TorrentProvider, MovieProvider):
 
         # remove accents
         simpletitle = simplifyString(italiantitle)
-        payload = {'act': 'allreleases', 'st': '0', 'cat': '4', 'filter': simpletitle}
-        data = self.sess.get('http://forum.tntvillage.scambioetico.org/index.php', params=payload)
-        soup = BeautifulSoup(data.content)
-        row = soup.findAll('tr', attrs={'class': 'row4'})
+        row = []
+        for cat in ['4', '8']:
+            payload = {'act': 'allreleases', 'st': '0', 'cat': cat, 'filter': simpletitle}
+            data = self.sess.get('http://forum.tntvillage.scambioetico.org/index.php', params=payload)
+            soup = BeautifulSoup(data.content)
+            row += soup.findAll('tr', attrs={'class': 'row4'})
 
         if row and len(row) == 0:
             log.info("No torrents found for %s on tntvillage.scambioetico.org", italiantitle)
@@ -125,7 +127,7 @@ class TNTVillage(TorrentProvider, MovieProvider):
         data = self.sess.get(url)
         html = BeautifulSoup(data.content)
         magnet = [x for x in html.find_all('a', title="Scarica allegato") if x.text.endswith('.torrent')][0].attrs['href']
-        log.info("Mgnet link: ----------- %s" % magnet)
+        log.info("Magnet link: ----------- %s" % magnet)
         titolo = html.findAll('td', id='sottotitolo')[1].text.strip('&nbsp;')
         desc_match = re.compile(ur'\[(.*)\]')
         s_res = re.search(desc_match, titolo)
